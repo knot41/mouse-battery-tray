@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mouse-battery-tray"
+version = "0.1.0"
+description = "A small Windows tray battery meter for a verified VGN wireless receiver"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+dependencies = ["hidapi>=0.14,<0.16", "Pillow>=10,<13", "pystray>=0.19.5,<0.20"]
+
+[project.optional-dependencies]
+build = ["pyinstaller>=6,<7"]
+
+[project.scripts]
+mouse-battery-tray = "mouse_battery_tray.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

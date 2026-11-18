@@ -1,0 +1,13 @@
+# Known-good Windows x64 build environment, Python 3.13.
+# Used as pip constraints; update intentionally with test/build verification.
+hidapi==0.15.0
+Pillow==12.3.0
+pystray==0.19.5
+six==1.17.0
+pyinstaller==6.22.3
+pyinstaller-hooks-contrib==2026.10
+altgraph==0.17.5
+packaging==26.3
+pefile==2024.8.26
+pywin32-ctypes==0.2.3
+setuptools==84.2.1
