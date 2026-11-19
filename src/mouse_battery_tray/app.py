@@ -15,6 +15,8 @@ import pystray
 from .icon import render
 from .protocol import Receiver
 from .state import State, Alerts
+from .taskbar import set_visibility
+from . import __version__
 
 APP = 'Mouse Battery Tray'
 DATA = Path(os.environ['LOCALAPPDATA']) / 'MouseBatteryTray'
@@ -22,13 +24,13 @@ RUN_KEY = r'Software\Microsoft\Windows\CurrentVersion\Run'
 
 
 def load_settings():
-    defaults = {'threshold': 20, 'interval': 60, 'notifications': True}
+    defaults = {'threshold': 20, 'interval': 60, 'notifications': True, 'show_on_taskbar': False}
     try:
-        raw = json.loads((DATA / 'settings.json').read_text(encoding='utf-8'))
+        raw = json.loads((DATA / 'settings.json').read_text(encoding='utf-8-sig'))
         if not isinstance(raw, dict):
             return defaults
         for key, values in [('threshold', (10, 20, 30)), ('interval', (30, 60, 120)),
-                            ('notifications', (True, False))]:
+                            ('notifications', (True, False)), ('show_on_taskbar', (True, False))]:
             value = raw.get(key)
             if type(value) is type(defaults[key]) and value in values:
                 defaults[key] = value
@@ -87,13 +89,37 @@ class Application:
         except OSError as exc:
             self.notify(f'Could not change startup setting: {exc}')
 
+    def apply_taskbar_visibility(self, show, *, interactive=False):
+        if not getattr(sys, 'frozen', False):
+            if interactive:
+                self.notify('This option is available in the packaged Windows app.')
+            return False
+        result = set_visibility(sys.executable, show)
+        logging.info('Taskbar preference: show=%s matched=%s changed=%s error=%s',
+                     show, result.matched, result.changed, result.error)
+        if result.matched and not result.error:
+            if result.changed and self.icon.visible:
+                # Re-register just our icon so Explorer re-reads its preference.
+                self.icon.visible = False
+                self.icon.visible = True
+            return True
+        if interactive:
+            self.notify('Windows could not apply the icon preference. Open Taskbar settings '
+                        'from this menu and enable Mouse Battery Tray under system tray icons.')
+        return False
+
+    def toggle_taskbar(self, icon, item):
+        show = not self.settings['show_on_taskbar']
+        self.configure('show_on_taskbar', show)
+        self.apply_taskbar_visibility(show, interactive=True)
+
     def menu(self):
         item = pystray.MenuItem
         def option(key, value, label):
             return item(label, lambda icon, entry: self.configure(key, value), radio=True,
                         checked=lambda entry: self.settings[key] == value)
         return pystray.Menu(
-            item(APP + ' 0.1.0', None, enabled=False),
+            item(APP + ' ' + __version__, None, enabled=False),
             item(lambda entry: self.state.description, None, enabled=False),
             item('Refresh now (or double-click)', lambda icon, entry: self.refresh.set(), default=True),
             pystray.Menu.SEPARATOR,
@@ -107,6 +133,11 @@ class Application:
             item('Test notification', lambda icon, entry: self.notify('Mouse battery reminders are enabled.')),
             item('Start with Windows', self.toggle_startup,
                  checked=lambda entry: startup_enabled(), enabled=bool(getattr(sys, 'frozen', False))),
+            item('Always show on taskbar', self.toggle_taskbar,
+                 checked=lambda entry: self.settings['show_on_taskbar'],
+                 enabled=bool(getattr(sys, 'frozen', False))),
+            item('Open Windows taskbar settings',
+                 lambda icon, entry: os.startfile('ms-settings:taskbar')),
             item('Open app data / logs', lambda icon, entry: os.startfile(str(DATA))),
             pystray.Menu.SEPARATOR,
             item('Quit', self.quit))
@@ -117,7 +148,14 @@ class Application:
         icon.stop()
 
     def setup(self, icon):
+        if self.settings['show_on_taskbar']:
+            self.apply_taskbar_visibility(True)
         icon.visible = True
+        if self.settings['show_on_taskbar'] and getattr(sys, 'frozen', False):
+            for _ in range(10):
+                if self.stopped.wait(0.2):
+                    break
+                self.apply_taskbar_visibility(True)
         self.worker = threading.Thread(target=self.poll_loop, name='battery-poll', daemon=True)
         self.worker.start()
 
