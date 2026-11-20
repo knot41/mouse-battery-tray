@@ -18,16 +18,39 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.tag || github.ref_name }}
+      - name: Check existing release
+        id: existing
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          $Tag = [Uri]::EscapeDataString($env:RELEASE_TAG)
+          $Uri = "https://api.github.com/repos/$env:GITHUB_REPOSITORY/releases/tags/$Tag"
+          $Headers = @{ Authorization = "Bearer $env:GH_TOKEN"; Accept = 'application/vnd.github+json' }
+          $Exists = $false
+          try {
+            $null = Invoke-RestMethod -Uri $Uri -Headers $Headers
+            $Exists = $true
+          } catch {
+            if ([int]$_.Exception.Response.StatusCode -ne 404) { throw }
+          }
+          "exists=$($Exists.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+          if ($Exists) { Write-Host 'Release already exists; keeping its published assets.' }
       - uses: actions/setup-python@v5
+        if: steps.existing.outputs.exists != 'true'
         with:
           python-version: '3.13'
       - name: Build and test
+        if: steps.existing.outputs.exists != 'true'
         shell: pwsh
         run: ./scripts/build.ps1
       - name: Package
+        if: steps.existing.outputs.exists != 'true'
         shell: pwsh
         run: ./scripts/package.ps1
       - name: Publish assets
+        if: steps.existing.outputs.exists != 'true'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}

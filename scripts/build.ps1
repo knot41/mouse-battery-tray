@@ -1,8 +1,11 @@
+param([string]$Python = 'python')
 $ErrorActionPreference = 'Stop'
+$Interpreter = (Get-Command $Python -ErrorAction Stop).Source
 $Root = Split-Path $PSScriptRoot -Parent
 Push-Location $Root
 try {
-    py -3 -m venv .venv
+    # Respect the interpreter selected by actions/setup-python or the caller.
+    & $Interpreter -m venv .venv
     if ($LASTEXITCODE -ne 0) { throw 'Could not create Python virtual environment' }
     & .venv\Scripts\python.exe -m pip install -c requirements-build.txt -e '.[build]'
     if ($LASTEXITCODE -ne 0) { throw 'Dependency installation failed' }

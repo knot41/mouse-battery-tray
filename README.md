@@ -1,6 +1,6 @@
 # Mouse Battery Tray
 
-[![Windows build](https://github.com/knot41/mouse-battery-tray/actions/workflows/windows.yml/badge.svg)](https://github.com/knot41/mouse-battery-tray/actions/workflows/windows.yml)
+[![Windows build](https://github.com/knot41/mouse-battery-tray/actions/workflows/windows.yml/badge.svg?branch=main&event=push)](https://github.com/knot41/mouse-battery-tray/actions/workflows/windows.yml?query=branch%3Amain)
 [![Release](https://img.shields.io/github/v/release/knot41/mouse-battery-tray)](https://github.com/knot41/mouse-battery-tray/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
